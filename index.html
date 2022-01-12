@@ -4,36 +4,52 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>NewPlayerPlus</title>
-    
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css"
+          rel="stylesheet"
+          integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC"
+          crossorigin="anonymous">
+
+    <style>
+        body {
+            background: black;
+        }
+    </style>
 </head>
 <body>
 
-<iframe
-        src="https://iframe.videodelivery.net/6239edb88dc87974fef0a8b0ee40168c"
-        style="border: none;"
-        height="720"
-        width="1280"
-        allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture; fullscreen"
-        allowfullscreen="true"
-        id="stream-player"
-></iframe>
+<div class="d-flex justify-content-center">
+    <div class="flex-grow-1 embed-responsive embed-responsive-16by9" style="height: 100vh">
+        <iframe
+                src="https://iframe.videodelivery.net/6239edb88dc87974fef0a8b0ee40168c"
+                class="embed-responsive-item"
+                style="border: none"
+                height="100%"
+                width="100%"
+                allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture; fullscreen"
+                allowfullscreen="true"
+                id="stream-player"
+        ></iframe>
+    </div>
+</div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" type="text/javascript" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
-<script src="https://embed.videodelivery.net/embed/sdk.latest.js" type="text/javascript"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"
+        type="text/javascript"
+        integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"
+        crossorigin="anonymous"></script>
+<script src="https://embed.videodelivery.net/embed/sdk.latest.js"
+        type="text/javascript"></script>
 
 <script type="text/javascript">
-  const player = Stream(document.getElementById('stream-player'))
-  player.addEventListener('play', () => {
-    console.log('playing!')
-  })
-  player.play().catch(() => {
-    console.log('playback failed, muting to try again')
-    player.muted = true
-    player.play()
-  })
+    const player = Stream(document.getElementById('stream-player'))
+    player.addEventListener('play', () => {
+        console.log('playing!')
+    })
+    player.play().catch(() => {
+        console.log('playback failed, muting to try again')
+        player.muted = true
+        player.play()
+    })
 </script>
-
-
 </body>
 </html>
