@@ -28,11 +28,9 @@
     </style>
 
     <script type="text/javascript">
-        const liveInputUid = "6239edb88dc87974fef0a8b0ee40168c";
-        const lifecycleUrl = "https://videodelivery.net/" + liveInputUid + "/lifecycle";
         const checkStreamInterval = 1500;
-
-        let currentVideoUid = null;
+        let liveInputUid = '';
+        let currentVideoUid = '';
         let playerObj = null;
     </script>
 </head>
@@ -42,6 +40,14 @@
     <h1 id="stream-status-please-wait" class="hide">Please wait</h1>
     <h1 id="stream-status-not-started" class="hide">Stream has not yet started</h1>
     <h1 id="stream-playback-failed" class="hide">Playback failed, please refresh the page</h1>
+</div>
+
+<div id="live-input-uid-container" class="hide">
+    <h1>Enter stream ID</h1>
+    <div class="alert-info hide"></div>
+    <label for="stream-live-uid-userinput">Stream ID:</label>
+    <input type="text" id="stream-live-uid-userinput">
+    <button id="stream-live-uid-go">Go &gt;</button>
 </div>
 
 <div class="d-flex flex-row justify-content-center">
@@ -57,6 +63,13 @@
         type="text/javascript"></script>
 
 <script type="text/javascript">
+    function hideAskUserForLiveInputUid() {
+        let element = document.getElementById('live-input-uid-container');
+        if (!element.classList.contains('hide')) {
+            element.classList.add('hide');
+        }
+    }
+
     function removeStatus() {
         let statusLineElement = document.getElementById('status-line');
         if (!statusLineElement.classList.contains('hide')) {
@@ -66,22 +79,6 @@
         for (let child of statusLineElement.children) {
             if (!child.classList.contains('hide')) {
                 child.classList.add('hide');
-            }
-        }
-    }
-
-    function showStatus(statusId) {
-        removeStatus();
-        let statusLineElement = document.getElementById('status-line');
-
-        // Find the status with the right id
-        for (let child of statusLineElement.children) {
-            if (child.id === 'stream-' + statusId) {
-                // we have it !
-                statusLineElement.classList.remove('hide');
-                child.classList.remove('hide');
-
-                return;
             }
         }
     }
@@ -98,9 +95,20 @@
         playerObj = null;
     }
 
-    function handleNotLive() {
-        removePlayer();
-        showStatus('status-not-started');
+    function showStatus(statusId) {
+        removeStatus();
+        let statusLineElement = document.getElementById('status-line');
+
+        // Find the status with the right id
+        for (let child of statusLineElement.children) {
+            if (child.id === 'stream-' + statusId) {
+                // we have it !
+                statusLineElement.classList.remove('hide');
+                child.classList.remove('hide');
+
+                return;
+            }
+        }
     }
 
     function createPlayerElement(videoUid) {
@@ -144,11 +152,52 @@
         });
     }
 
+    function handleNotLive() {
+        removePlayer();
+        showStatus('status-not-started');
+    }
+
+    function handleError(err) {
+        // reset!
+        liveInputUid = '';
+
+        removePlayer();
+        removeStatus();
+        hideAskUserForLiveInputUid();
+        showStatus('playback-failed');
+
+        console.error('error', err);
+    }
+
+    function handleNoLiveInputUid() {
+        removePlayer();
+        removeStatus();
+
+        let element = document.getElementById('live-input-uid-container');
+        element.classList.remove('hide');
+
+        document.getElementById('stream-live-uid-userinput').value = '';
+    }
+
+    function handleGoUidButtonClicked() {
+        console.log('GO CLICKED');
+        let inputUid = document.getElementById('stream-live-uid-userinput');
+        if (inputUid.value === '') {
+            // we need text
+        } else {
+            liveInputUid = inputUid.value;
+            checkStream();
+        }
+    }
+
     function handleLifecycleJson(lifecycleObj) {
         if (!lifecycleObj.hasOwnProperty('isInput') || !lifecycleObj.isInput) {
             // BAIL
-            throw 'WRONG DATA';
+            liveInputUid = '';
+            return;
         }
+
+        hideAskUserForLiveInputUid();
 
         if (lifecycleObj.hasOwnProperty('live')
             && lifecycleObj.hasOwnProperty('videoUID')
@@ -167,11 +216,33 @@
     }
 
     function checkStream() {
-        fetch(lifecycleUrl)
-            .then(res => res.json())
-            .then(out => handleLifecycleJson(out))
-            .then(_ => setTimeout(checkStream, checkStreamInterval));
+        if (liveInputUid && liveInputUid !== '') {
+            fetch("https://videodelivery.net/" + liveInputUid + "/lifecycle")
+                .then(res => res.json())
+                .then(out => handleLifecycleJson(out))
+                .then(_ => setTimeout(checkStream, checkStreamInterval))
+                .catch(err => handleError(err));
+        } else {
+            // no live input uid
+            handleNoLiveInputUid();
+        }
     }
+
+    // Check if we have liveInputUid in the query param
+    const urlSearchParams = new URLSearchParams(window.location.search);
+    const params = Object.fromEntries(urlSearchParams.entries());
+
+    if (params && params.hasOwnProperty('liveInputUid')) {
+        // We might have something!
+        let liveInputUidQueryParam = params.liveInputUid;
+        if (liveInputUidQueryParam) {
+            console.log('Using live input uid from the query parameters', liveInputUidQueryParam);
+            liveInputUid = liveInputUidQueryParam;
+        }
+    }
+
+    // Hook events to button
+    document.getElementById('stream-live-uid-go').addEventListener('click', handleGoUidButtonClicked);
 
     setTimeout(checkStream, 100);
 </script>
