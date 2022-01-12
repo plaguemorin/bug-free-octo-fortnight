@@ -13,23 +13,39 @@
     <style>
         body {
             background: black;
+            color: white;
+        }
+
+        #stream-player {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        .hide {
+            display: none;
         }
     </style>
+
+    <script type="text/javascript">
+        const liveInputUid = "6239edb88dc87974fef0a8b0ee40168c";
+        const lifecycleUrl = "https://videodelivery.net/" + liveInputUid + "/lifecycle";
+        const checkStreamInterval = 1500;
+
+        let currentVideoUid = null;
+        let playerObj = null;
+    </script>
 </head>
 <body>
 
-<div class="d-flex justify-content-center">
-    <div class="flex-grow-1 embed-responsive embed-responsive-16by9" style="height: 100vh">
-        <iframe
-                src="https://iframe.videodelivery.net/6239edb88dc87974fef0a8b0ee40168c"
-                class="embed-responsive-item"
-                style="border: none"
-                height="100%"
-                width="100%"
-                allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture; fullscreen"
-                allowfullscreen="true"
-                id="stream-player"
-        ></iframe>
+<div id="status-line">
+    <h1 id="stream-status-please-wait" class="hide">Please wait</h1>
+    <h1 id="stream-status-not-started" class="hide">Stream has not yet started</h1>
+    <h1 id="stream-playback-failed" class="hide">Playback failed, please refresh the page</h1>
+</div>
+
+<div class="d-flex flex-row justify-content-center">
+    <div class="p-2 flex-grow-1 embed-responsive embed-responsive-16by9" id="player-embed" style="height: 100vh">
     </div>
 </div>
 
@@ -41,15 +57,123 @@
         type="text/javascript"></script>
 
 <script type="text/javascript">
-    const player = Stream(document.getElementById('stream-player'))
-    player.addEventListener('play', () => {
-        console.log('playing!')
-    })
-    player.play().catch(() => {
-        console.log('playback failed, muting to try again')
-        player.muted = true
-        player.play()
-    })
+    function removeStatus() {
+        let statusLineElement = document.getElementById('status-line');
+        if (!statusLineElement.classList.contains('hide')) {
+            statusLineElement.classList.add('hide');
+        }
+
+        for (let child of statusLineElement.children) {
+            if (!child.classList.contains('hide')) {
+                child.classList.add('hide');
+            }
+        }
+    }
+
+    function showStatus(statusId) {
+        removeStatus();
+        let statusLineElement = document.getElementById('status-line');
+
+        // Find the status with the right id
+        for (let child of statusLineElement.children) {
+            if (child.id === 'stream-' + statusId) {
+                // we have it !
+                statusLineElement.classList.remove('hide');
+                child.classList.remove('hide');
+
+                return;
+            }
+        }
+    }
+
+    function removePlayer() {
+        let rootElement = document.getElementById('player-embed');
+
+        // Clear all child nodes
+        while (rootElement.firstChild) {
+            rootElement.removeChild(rootElement.lastChild);
+        }
+
+        currentVideoUid = null;
+        playerObj = null;
+    }
+
+    function handleNotLive() {
+        removePlayer();
+        showStatus('status-not-started');
+    }
+
+    function createPlayerElement(videoUid) {
+        let player = document.createElement('iframe');
+        player.src = "https://iframe.videodelivery.net/" + videoUid;
+        player.classList.add('embed-responsive-item');
+        player.classList.add('player');
+        player.allowFullscreen = true;
+        player.allow = "accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture; fullscreen";
+        player.id = 'stream-player';
+        return player;
+    }
+
+    function insertVideoForPlayInDocument(videoUid) {
+        console.log('We are live! for video', videoUid);
+
+        // Clear stuff
+        removePlayer();
+        removeStatus();
+
+        // Create player
+        let player = createPlayerElement(videoUid);
+
+        // Insert the player
+        let rootElement = document.getElementById('player-embed');
+        rootElement.appendChild(player);
+
+        // Set that we're currently playing that
+        currentVideoUid = videoUid;
+
+        // add the stream management
+        playerObj = Stream(player);
+        playerObj.addEventListener('play', () => {
+            removeStatus();
+        });
+
+        playerObj.play().catch(() => {
+            showStatus('playback-failed');
+            player.muted = true
+            // TODO: restart the stream
+        });
+    }
+
+    function handleLifecycleJson(lifecycleObj) {
+        if (!lifecycleObj.hasOwnProperty('isInput') || !lifecycleObj.isInput) {
+            // BAIL
+            throw 'WRONG DATA';
+        }
+
+        if (lifecycleObj.hasOwnProperty('live')
+            && lifecycleObj.hasOwnProperty('videoUID')
+            && lifecycleObj.live) {
+            // Are we currently playing this video ?
+            if (currentVideoUid !== lifecycleObj.videoUID) {
+                // We are not playing the right video! fix this
+                insertVideoForPlayInDocument(lifecycleObj.videoUID);
+            } else {
+                // We are currently playing the same video UID - maybe just make sure it's actually playing ?
+            }
+        } else {
+            // Input isn't live...
+            handleNotLive();
+        }
+    }
+
+    function checkStream() {
+        fetch(lifecycleUrl)
+            .then(res => res.json())
+            .then(out => handleLifecycleJson(out))
+            .then(_ => setTimeout(checkStream, checkStreamInterval));
+    }
+
+    setTimeout(checkStream, 100);
 </script>
 </body>
 </html>
