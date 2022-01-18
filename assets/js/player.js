@@ -90,11 +90,7 @@ function insertVideoForPlayInDocument(videoUid) {
         player.muted = true;
     });
 
-    playerObj.play().catch(() => {
-        showStatus('playback-failed');
-        player.muted = true
-        // TODO: restart the stream
-    });
+    playerObj.play();
 }
 
 function handleNotLive() {
